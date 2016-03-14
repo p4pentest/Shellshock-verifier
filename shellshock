@@ -1,0 +1,39 @@
+#!/bin/bash
+
+n=`wc -l ip_list | cut -d " " -f1`
+rm -rf Not_Vulnerable_ip
+rm -rf Vulnerable_ip
+rm -rf Cannot_login_ip
+rm -rf pingable
+rm -rf not_pingable
+for(( i=1 ; i <= $n; i++))
+do
+        ip=`sed -n ''$i'p' ip_list`
+        ping=`ping -w 2 -c 1 $ip | grep "ttl" | wc -l`
+        if [ $ping == 1 ]
+        then
+                echo $ip >> pingable
+        else
+                echo $ip >> not_pingable
+        fi
+done
+
+rm -rf test
+user="[username]"  #username
+cpass="[password]" #password
+c=`wc -l pingable | cut -d" " -f1`
+for (( i=1 ; i <= $c ; i++))
+do
+	ip=`sed -n ''$i'p' pingable`
+	result=`sshpass -p $cpass ssh $user@$ip -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null 'env x="() { :;}; echo Vulnerable" bash -c "echo Test"' | sed -n 1p` 
+	if [ "$result" == "Test" ]
+	then
+		echo $ip >> Not_Vulnerable_ip
+	elif [ "$result" == "Vulnerable" ]
+	then
+		echo $ip >> Vulnerable_ip
+	else
+		echo $ip >> Cannot_login_ip
+	fi
+	echo "$i IP completed $ip"
+done
